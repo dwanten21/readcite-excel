@@ -74,9 +74,10 @@ export function estructuraCuaderno(citas,{anio,porPagina=2,espejo=true,ahora}){
 /** Huella del contenido del cuaderno: cambia solo si cambia algo que se imprime (citas guardadas del año, sus textos,
  * el orden, citas por página, espejo o año). Sirve para no regenerar la hoja si no hace falta.
  * @param {ReturnType<typeof estructuraCuaderno>} nb */
+export const VERSION_MAQUETA=4; // súbela al cambiar el maquetado: así los cuadernos ya generados se rehacen solos
 export function firmaCuaderno(nb){
-  const t=JSON.stringify([nb.anio,nb.porPagina,nb.espejo,nb.pages]);
+  const t=JSON.stringify([VERSION_MAQUETA,nb.anio,nb.porPagina,nb.espejo,nb.pages]);
   let h1=0x811c9dc5,h2=0x01000193;
   for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);h1=Math.imul(h1^c,0x01000193)>>>0;h2=Math.imul(h2^c,0x5bd1e995)>>>0}
-  return 'v1-'+h1.toString(36)+h2.toString(36)+'-'+t.length.toString(36);
+  return 'v'+VERSION_MAQUETA+'-'+h1.toString(36)+h2.toString(36)+'-'+t.length.toString(36);
 }

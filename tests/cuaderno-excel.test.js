@@ -53,7 +53,7 @@ test('genera la hoja: rejilla en mm, valores por lotes, combinaciones, enlaces, 
   assert.equal(r.citas, 12);
   const sets = L.log.filter(x => x.op === 'set');
   assert.equal(sets.filter(x => x.ruta.endsWith('format.columnWidth')).length, 10);
-  assert.ok(sets.some(x => x.ruta === 'ws.getRange(L1:L2).values' && x.v[0][0] === MARCA && /^v1-/.test(x.v[1][0])));
+  assert.ok(sets.some(x => x.ruta === 'ws.getRange(L1:L2).values' && x.v[0][0] === MARCA && /^v\d+-/.test(x.v[1][0])));
   assert.ok(sets.some(x => x.ruta.endsWith('pageLayout.paperSize') && x.v === 'A5'));
   for (const m of ['leftMargin', 'rightMargin', 'topMargin', 'bottomMargin']) assert.ok(sets.some(x => x.ruta.endsWith(`pageLayout.${m}`) && x.v === 0), m);
   const saltos = L.log.filter(x => x.op === 'call' && x.ruta.endsWith('horizontalPageBreaks.add'));

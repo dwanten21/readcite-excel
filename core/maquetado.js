@@ -20,7 +20,10 @@ export const FILAS_PAGINA = 1 + FILAS_CUERPO + FILAS_PIE + 1; // 83 → 199,3 mm
 export const COLORES = { tinta: '#1a1a1a', gris: '#6b6b6b', gris2: '#8a8a8a', rojo: '#e8432f', regla: '#d9d6d0', caja: '#f1eee8',
   tabActivo: '#1a1a1a', tabCon: '#e4e0d9', tabVacio: '#f0eee9', tabTextoVacio: '#a3a3a3', blanco: '#ffffff' };
 export const ALTO_LINEA = 1.35;           // alto de línea de Georgia en Excel para Mac (calibrado a ojo en la Fase 5: 1,2 recortaba)
-const SEGURIDAD = 0.94;                   // margen para diferencias de medición entre el panel y Excel
+export const ALTO_LINEA_CITA = 1.62;      // la cita (cursiva, varias líneas) sale más espaciada: con 1,35 o 1,45 su última línea
+                                          // quedaba medio cortada y no se veía el «…» (medido en Excel para Mac: ≈ 12 pt a 7,5 pt)
+const SEGURIDAD = 0.86;                   // margen para diferencias de medición entre el panel y Excel (0,94 dejaba que Excel
+                                          // para Mac volviera a partir líneas largas: palabras sueltas y cita cortada sin «…»)
 
 /** @typedef {(texto:string, fuente:{size:number, italic?:boolean, bold?:boolean})=>number} Medidor  ancho en pt */
 /** @typedef {{size?:number,bold?:boolean,italic?:boolean,color?:string,fill?:string,h?:'left'|'center'|'right',v?:'top'|'center'|'bottom',
@@ -31,10 +34,10 @@ const mm = (/** @type {number} */ x) => x * PT_POR_MM;
 export const ANCHO_COLUMNAS_PT = COLUMNAS_MM.map(mm);
 const filaPt = mm(FILA_MM);
 
-/** Alto (en filas de rejilla) que ocupan `n` líneas de tamaño `size`. @param {number} n @param {number} size */
-export const filasPara = (n, size) => Math.ceil((n * size * ALTO_LINEA) / filaPt);
-/** Líneas de tamaño `size` que caben en `filas` filas. @param {number} filas @param {number} size */
-export const lineasEn = (filas, size) => Math.max(0, Math.floor((filas * filaPt) / (size * ALTO_LINEA)));
+/** Alto (en filas de rejilla) que ocupan `n` líneas de tamaño `size`. @param {number} n @param {number} size @param {number} [alto] */
+export const filasPara = (n, size, alto = ALTO_LINEA) => Math.ceil((n * size * alto) / filaPt);
+/** Líneas de tamaño `size` que caben en `filas` filas. @param {number} filas @param {number} size @param {number} [alto] */
+export const lineasEn = (filas, size, alto = ALTO_LINEA) => Math.max(0, Math.floor((filas * filaPt) / (size * alto)));
 
 /**
  * Parte un texto en líneas de ancho ≤ `ancho` (pt), de forma voraz como el navegador con `hyphens: manual`:
@@ -189,9 +192,9 @@ export function planCuaderno(nb, medir) {
     let filasCita = n - 2 - 14 - filasApa;
     /** @type {string[]} */ let citaL = []; let tam = 9;
     if (e.filled) {
-      for (tam of [9, 8.5, 8, 7.5]) { citaL = partirLineas(e.text, util, medir, { size: tam, italic: true }); if (filasPara(citaL.length, tam) <= filasCita) break; }
-      citaL = recortar(citaL, lineasEn(filasCita, tam), util, medir, { size: tam, italic: true });
-      filasCita = Math.min(filasCita, filasPara(citaL.length, tam) + 1);
+      for (tam of [9, 8.5, 8, 7.5]) { citaL = partirLineas(e.text, util, medir, { size: tam, italic: true }); if (filasPara(citaL.length, tam, ALTO_LINEA_CITA) <= filasCita) break; }
+      citaL = recortar(citaL, Math.max(1, lineasEn(filasCita, tam, ALTO_LINEA_CITA)), util, medir, { size: tam, italic: true });
+      filasCita = Math.min(filasCita, filasPara(citaL.length, tam, ALTO_LINEA_CITA) + 1);
     }
     let fc = f + 2;
     if (e.filled) addL(fc, 0, fc + filasCita - 1, 3, celda(citaL), { size: tam, italic: true, wrap: true, v: 'top' });
