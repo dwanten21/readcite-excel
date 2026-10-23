@@ -34,3 +34,9 @@ Una copia modificada no es ilegal por sí misma —esta licencia lo permite—, 
 malicioso sí lo es, se haga bajo la licencia que se haga.
 
 Se ofrece «tal cual», sin garantías (sección 5 del texto legal).
+
+## Componentes de terceros
+
+- `panel/vendor/heic-to/` — [heic-to](https://github.com/hoppergee/heic-to) 1.6.5 con libheif 1.23.5, sin modificar,
+  bajo licencia LGPL-3.0 (ver `panel/vendor/heic-to/LICENSE`). Sirve para abrir fotos HEIC del iPhone.
+- Tesseract.js 5.1.1 (Apache-2.0) se descarga desde jsDelivr al transcribir la primera foto; no se incluye aquí.

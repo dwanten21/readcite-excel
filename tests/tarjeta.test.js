@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { limpiarTranscripcion, nombrePng } from '../core/ocr.js';
+import { limpiarTranscripcion, nombrePng, aplanarLuz } from '../core/ocr.js';
 import { planTarjeta } from '../core/tarjeta.js';
 import { nbHyphWord } from '../core/silabeo.js';
 
@@ -60,4 +60,14 @@ test('tarjeta sin datos: textos de ejemplo como la vista previa de la web', () =
   const t = p.ops.filter(o => o.t === 'texto').map(o => o.texto);
   assert.ok(t.includes('SIN TEMA') && t.includes('Autor') && t.includes('Libro'));
   assert.ok(p.lineas.join(' ').includes('Tu cita textual'));
+});
+
+test('aplanarLuz: el papel en sombra queda blanco y la tinta sigue oscura', () => {
+  // 128×1: mitad izquierda papel claro (200) con una letra (40), mitad derecha papel en sombra (100) con una letra (20)
+  const ancho = 128, rgba = new Uint8ClampedArray(ancho * 4);
+  for (let x = 0; x < ancho; x++) { const v = x < 64 ? (x === 10 ? 40 : 200) : (x === 110 ? 20 : 100); rgba.set([v, v, v, 255], 4 * x); }
+  aplanarLuz(rgba, ancho, 1);
+  assert.ok(rgba[4 * 0] > 245 && rgba[4 * 127] > 245, 'papel de ambas mitades ≈ blanco');
+  assert.ok(rgba[4 * 10] < 70 && rgba[4 * 110] < 70, 'letras de ambas mitades oscuras');
+  assert.equal(rgba[4 * 127 + 3], 255, 'no toca la opacidad');
 });

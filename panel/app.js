@@ -11,6 +11,7 @@ import { generarInicio, hayInicio } from '../excel/inicio.js';
 import { generarBuscar } from '../excel/buscar.js';
 import { guardarPng, dibujarTarjeta } from './png.js';
 import { limpiarTranscripcion } from '../core/ocr.js';
+import { imagenLegible, esHeic } from './imagen.js';
 import { FORMATOS } from '../core/tarjeta.js';
 import { estructuraCuaderno, NB_LETTERS } from '../core/cuaderno.js';
 
@@ -194,7 +195,7 @@ function vistaFormulario() {
     <h2>${editando ? 'Editar cita' : 'Nueva cita'}</h2>
     <div class="caja" style="background:var(--suave);gap:4px">
       <div class="acciones"><span style="flex:1">Transcribir desde una foto de la página</span>
-        <label class="boton-archivo${st.ocrEstado ? ' ocupado' : ''}"><span id="ocr-estado">${esc(st.ocrEstado || 'Subir foto')}</span><input id="foto" type="file" accept="image/*" hidden${st.ocrEstado ? ' disabled' : ''}></label></div>
+        <label class="boton-archivo${st.ocrEstado ? ' ocupado' : ''}"><span id="ocr-estado">${esc(st.ocrEstado || 'Subir foto')}</span><input id="foto" type="file" accept="image/*,.heic,.heif" hidden${st.ocrEstado ? ' disabled' : ''}></label></div>
       <div class="contador">${esc(st.ocrNota || 'La foto no se guarda: se lee aquí mismo, en tu Mac. El texto extraído queda en el campo de abajo para que lo corrijas.')}</div>
     </div>
     <div class="rejilla2">${CAMPOS.map(campo).join('')}</div>
@@ -248,8 +249,10 @@ async function transcribir(archivo) {
   const marca = (/** @type {string} */ t) => { st.ocrEstado = t; const el = document.getElementById('ocr-estado'); if (el) el.textContent = t; };
   st.ocrNota = ''; marca('Preparando…'); pintar();
   try {
+    if (esHeic(archivo)) marca('Abriendo foto HEIC…');
+    const imagen = await imagenLegible(archivo);
     const T = await cargarOcr();
-    const r = await T.recognize(archivo, 'spa', { logger: (/** @type {any} */ m) => {
+    const r = await T.recognize(imagen, 'spa', { logger: (/** @type {any} */ m) => {
       if (m.status === 'recognizing text') marca(`Leyendo… ${Math.round(m.progress * 100)} %`);
       else if (/load|initializ/.test(m.status)) marca('Cargando español…');
     } });
@@ -258,7 +261,9 @@ async function transcribir(archivo) {
     st.form.text = texto;
     st.ocrNota = 'Texto transcrito. Revísalo y recorta lo que no sea la cita.';
   } catch (e) {
-    st.ocrNota = e instanceof Error && e.message.startsWith('No se pudo cargar') ? e.message : 'No se pudo leer la foto. Prueba con más luz o escribe la cita a mano.';
+    st.ocrNota = e instanceof Error && e.message.startsWith('No se pudo cargar') ? e.message
+      : e instanceof Error && e.message === 'formato' ? 'No pude abrir ese archivo de imagen. Prueba con una foto JPG, PNG o HEIC.'
+      : 'No se pudo leer la foto. Prueba con más luz o escribe la cita a mano.';
   }
   st.ocrEstado = ''; pintar();
 }
