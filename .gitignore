@@ -1,0 +1,16 @@
+# Datos personales: nunca se publican
+*.xlsx
+*.xlsm
+~$*
+
+# Originales de la web (no forman parte del complemento) y material de terceros
+ReadCite.dc.html
+support.js
+_ds/
+screenshots/
+
+# Sistema y configuración local
+.DS_Store
+.thumbnail
+.claude/
+node_modules/

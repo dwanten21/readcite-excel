@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Manifiesto del complemento ReadCite para Excel (Windows, Mac y web).
+     BASE = https://localhost:3000 (servidor local HTTPS). Si el panel se aloja en otro sitio,
+     sustituye todas las apariciones de https://localhost:3000 por la nueva dirección. -->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+  <Id>b790dff5-9208-4d2b-a842-bd4a62f36686</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Walter Daniel Castillo Talancha</ProviderName>
+  <DefaultLocale>es-ES</DefaultLocale>
+  <DisplayName DefaultValue="ReadCite"/>
+  <Description DefaultValue="Biblioteca de citas textuales con referencias APA 7, colecciones, reto de lectura y cuaderno A5."/>
+  <IconUrl DefaultValue="https://localhost:3000/panel/iconos/icono-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/panel/iconos/icono-64.png"/>
+  <SupportUrl DefaultValue="https://localhost:3000/panel/index.html"/>
+  <AppDomains>
+    <AppDomain>https://localhost:3000</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.4">
+      <Set Name="ExcelApi" MinVersion="1.4"/>
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://localhost:3000/panel/index.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="RC.Titulo"/>
+            <Description resid="RC.Descripcion"/>
+            <LearnMoreUrl resid="RC.Url"/>
+          </GetStarted>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="RC.Grupo">
+                <Label resid="RC.Titulo"/>
+                <Icon>
+                  <bt:Image size="16" resid="RC.Icono16"/>
+                  <bt:Image size="32" resid="RC.Icono32"/>
+                  <bt:Image size="80" resid="RC.Icono80"/>
+                </Icon>
+                <Control xsi:type="Button" id="RC.Abrir">
+                  <Label resid="RC.Titulo"/>
+                  <Supertip>
+                    <Title resid="RC.Titulo"/>
+                    <Description resid="RC.Descripcion"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="RC.Icono16"/>
+                    <bt:Image size="32" resid="RC.Icono32"/>
+                    <bt:Image size="80" resid="RC.Icono80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>ReadCitePanel</TaskpaneId>
+                    <SourceLocation resid="RC.Panel"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="RC.Icono16" DefaultValue="https://localhost:3000/panel/iconos/icono-16.png"/>
+        <bt:Image id="RC.Icono32" DefaultValue="https://localhost:3000/panel/iconos/icono-32.png"/>
+        <bt:Image id="RC.Icono80" DefaultValue="https://localhost:3000/panel/iconos/icono-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="RC.Panel" DefaultValue="https://localhost:3000/panel/index.html"/>
+        <bt:Url id="RC.Url" DefaultValue="https://localhost:3000/panel/index.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="RC.Titulo" DefaultValue="ReadCite"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="RC.Descripcion" DefaultValue="Abre el panel de ReadCite: citas, colecciones, biblioteca y reto de lectura."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

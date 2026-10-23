@@ -1,0 +1,9 @@
+{
+  "name": "readcite-excel",
+  "private": true,
+  "type": "module",
+  "description": "ReadCite para Excel: núcleo puro (core/) y complemento Office.js",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Política de seguridad: solo se ejecuta el código del propio panel, Office.js de Microsoft y el OCR (jsDelivr,
+       con sello de integridad). Sin eval, sin plugins, sin formularios hacia fuera, sin cambiar la URL base. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://appsforoffice.microsoft.com https://cdn.jsdelivr.net 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' data: https://cdn.jsdelivr.net https://tessdata.projectnaptha.com https://appsforoffice.microsoft.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; frame-src 'self' https://*.office.com https://*.microsoft.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>ReadCite</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&family=Caveat:wght@500;700&family=Oswald:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="cabecera">
+    <div class="marca" aria-label="ReadCite"><span class="rombo"><span>“</span></span><span>Read<span class="rojo">Cite</span></span></div>
+    <span id="modo" class="modo" hidden></span>
+  </header>
+  <nav class="pestanas" role="tablist">
+    <button data-vista="citas" role="tab">Citas</button>
+    <button data-vista="nueva" role="tab">Nueva</button>
+    <button data-vista="biblioteca" role="tab">Biblioteca</button>
+    <button data-vista="colecciones" role="tab">Colecciones</button>
+    <button data-vista="cuaderno" role="tab">Cuaderno</button>
+    <button data-vista="ajustes" role="tab" aria-label="Ajustes">⚙</button>
+  </nav>
+  <div id="avisos"></div>
+  <main id="vista" aria-live="polite"><p class="cargando">Cargando tu biblioteca…</p></main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
