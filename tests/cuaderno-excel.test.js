@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generarCuaderno, areaImpresion, HOJA, MARCA } from '../excel/cuaderno.js';
+import { generarCuaderno, areaImpresion, cuadernoDesactualizado, opcionesCuaderno, HOJA, MARCA } from '../excel/cuaderno.js';
+import { estructuraCuaderno, firmaCuaderno } from '../core/cuaderno.js';
 import { FILAS_PAGINA } from '../core/maquetado.js';
 import { CONFIG_DEF } from '../core/datos.js';
 import { web } from './web.js';
@@ -52,7 +53,7 @@ test('genera la hoja: rejilla en mm, valores por lotes, combinaciones, enlaces, 
   assert.equal(r.citas, 12);
   const sets = L.log.filter(x => x.op === 'set');
   assert.equal(sets.filter(x => x.ruta.endsWith('format.columnWidth')).length, 10);
-  assert.ok(sets.some(x => x.ruta === 'ws.getRange(L1).values' && x.v[0][0] === MARCA));
+  assert.ok(sets.some(x => x.ruta === 'ws.getRange(L1:L2).values' && x.v[0][0] === MARCA && /^v1-/.test(x.v[1][0])));
   assert.ok(sets.some(x => x.ruta.endsWith('pageLayout.paperSize') && x.v === 'A5'));
   for (const m of ['leftMargin', 'rightMargin', 'topMargin', 'bottomMargin']) assert.ok(sets.some(x => x.ruta.endsWith(`pageLayout.${m}`) && x.v === 0), m);
   const saltos = L.log.filter(x => x.op === 'call' && x.ruta.endsWith('horizontalPageBreaks.add'));
@@ -109,4 +110,33 @@ test('área de impresión por letra: empieza en anverso y ocupa páginas pares',
   assert.equal(((b - a + 1) / FILAS_PAGINA) % 2, 0);
   assert.match(await areaImpresion(L.ctx, modelo(), null, AHORA), /^A1:J\d+$/);
   await assert.rejects(areaImpresion(libro().ctx, modelo(), 'M', AHORA), /Aún no hay cuaderno/);
+});
+
+test('actualización automática: la huella cambia al guardar/quitar una cita y solo entonces hay que regenerar', async () => {
+  const firma = m => firmaCuaderno(estructuraCuaderno(m.citas, opcionesCuaderno(m.config, AHORA)));
+  const base = modelo();
+  assert.equal(firma(base), firma(modelo()), 'mismo contenido → misma huella');
+  const sinGuardar = modelo(citas().map((c, i) => (i === 0 ? { ...c, savedAt: null } : c)));
+  assert.notEqual(firma(sinGuardar), firma(base), 'quitar una guardada cambia la huella');
+  const editada = modelo(citas().map((c, i) => (i === 0 ? { ...c, text: c.text + ' (corregida)' } : c)));
+  assert.notEqual(firma(editada), firma(base), 'editar el texto cambia la huella');
+  const like = modelo(citas().map((c, i) => (i === 0 ? { ...c, liked: true } : c)));
+  assert.equal(firma(like), firma(base), 'un «me gusta» no toca el cuaderno');
+
+  const ctxCon = valores => ({ workbook: { worksheets: { getItemOrNullObject: () => ({ isNullObject: !valores, load() { return this; },
+    getRange: () => ({ load() { return this; }, values: valores }) }) } }, async sync() {} });
+  assert.equal(await cuadernoDesactualizado(ctxCon(null), base, AHORA), false, 'sin hoja Cuaderno no se crea sola');
+  assert.equal(await cuadernoDesactualizado(ctxCon([['mis notas'], ['']]), base, AHORA), false, 'hoja ajena: no se toca');
+  assert.equal(await cuadernoDesactualizado(ctxCon([[MARCA], [firma(base)]]), base, AHORA), false, 'al día');
+  assert.equal(await cuadernoDesactualizado(ctxCon([[MARCA], [firma(base)]]), sinGuardar, AHORA), true, 'desactualizada');
+  assert.equal(await cuadernoDesactualizado(ctxCon([[MARCA], ['']]), base, AHORA), true, 'cuaderno de antes de la huella');
+});
+
+test('regenerar en automático: conserva la posición de la hoja y no cambia la hoja activa', async () => {
+  const L = libro({ existente: { marca: MARCA } });
+  await generarCuaderno(L.ctx, modelo(), { ahora: AHORA, medir, activar: false });
+  assert.ok(!L.log.some(x => x.op === 'call' && x.ruta === 'ws.activate'), 'no activa la hoja');
+  const M = libro();
+  await generarCuaderno(M.ctx, modelo(), { ahora: AHORA, medir });
+  assert.ok(M.log.some(x => x.op === 'call' && x.ruta === 'ws.activate'), 'al pulsar «Generar» sí la muestra');
 });

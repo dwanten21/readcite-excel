@@ -6,7 +6,7 @@ import * as D from '../core/datos.js';
 import { apa, apaText } from '../core/apa.js';
 import { resumenReto, datosLibro, sesionesHoy, ICARO_INTERVALS } from '../core/reto.js';
 import { libroSimulado } from '../excel/simulado.js';
-import { generarCuaderno, areaImpresion, opcionesCuaderno } from '../excel/cuaderno.js';
+import { generarCuaderno, areaImpresion, opcionesCuaderno, cuadernoDesactualizado } from '../excel/cuaderno.js';
 import { generarInicio, hayInicio } from '../excel/inicio.js';
 import { generarBuscar } from '../excel/buscar.js';
 import { guardarPng, dibujarTarjeta } from './png.js';
@@ -62,7 +62,33 @@ async function copiar(texto) {
   toast('Copiado al portapapeles');
 }
 
-async function recargar() { st.modelo = await ejecutar(ctx => X.leerTodo(ctx)); pintar(); }
+async function recargar() { st.modelo = await ejecutar(ctx => X.leerTodo(ctx)); pintar(); programarCuaderno(); }
+
+/* Cuaderno automático: tras cualquier cambio (y al abrir el panel) se compara la huella guardada en la hoja
+   Cuaderno con las citas actuales; si difiere, se regenera en segundo plano sin cambiar la hoja que estás mirando.
+   Una sola regeneración a la vez: si llegan cambios mientras tanto, se repite al terminar. */
+let tCuaderno = 0, cuadernoEnCurso = false, cuadernoOtraVez = false;
+function programarCuaderno() {
+  if (!enExcel) return;
+  clearTimeout(tCuaderno); tCuaderno = window.setTimeout(actualizarCuaderno, 1500);
+}
+async function actualizarCuaderno() {
+  if (cuadernoEnCurso) { cuadernoOtraVez = true; return; }
+  cuadernoEnCurso = true;
+  try {
+    do {
+      cuadernoOtraVez = false;
+      const modelo = st.modelo, ahora = Date.now();
+      if (!(await Excel.run(ctx => cuadernoDesactualizado(ctx, modelo, ahora)))) break;
+      st.progresoCuaderno = 'Actualizando…'; if (st.vista === 'cuaderno') pintar();
+      toast('Actualizando el cuaderno con tus citas guardadas…');
+      const r = await Excel.run(ctx => generarCuaderno(ctx, modelo, { ahora, medir, activar: false,
+        alProgresar: (h, t) => { st.progresoCuaderno = `Actualizando… ${h}/${t} págs.`; if (st.vista === 'cuaderno') pintar(); } }));
+      if (!cuadernoOtraVez) toast(`Cuaderno actualizado: ${r.citas} ${r.citas === 1 ? 'cita' : 'citas'}.`);
+    } while (cuadernoOtraVez);
+  } catch (e) { toast('No pude actualizar el cuaderno: ' + (e instanceof Error ? e.message : e), true); }
+  cuadernoEnCurso = false; st.progresoCuaderno = ''; if (st.vista === 'cuaderno') pintar();
+}
 
 /** Tras crear, editar o borrar: si existe la hoja Inicio, se redibuja sola con la cita más reciente (sin cambiar de hoja). */
 async function refrescarInicio() {
@@ -336,14 +362,14 @@ function vistaCuaderno() {
     <div class="acciones">
       <button class="primario" data-acc="generar-cuaderno"${ocupado || !enExcel ? ' disabled' : ''}>${ocupado ? esc(st.progresoCuaderno) : 'Generar cuaderno'}</button>
     </div>
-    <div class="contador">Crea o rehace la hoja «Cuaderno». Esa hoja la escribe ReadCite: lo que edites a mano en ella se pierde al regenerarla.</div>
+    <div class="contador">Crea la hoja «Cuaderno». Después se actualiza sola cada vez que guardas, editas, quitas o borras una cita. Esa hoja la escribe ReadCite: lo que edites a mano en ella se pierde al actualizarla.</div>
   </section>
   <section class="caja">
     <h3>Imprimir</h3>
     <label>Qué imprimir<select id="letra-impresion"><option value="">Todo el cuaderno</option>${NB_LETTERS.map(l => `<option value="${l}"${st.letraImpresion === l ? ' selected' : ''}>Solo la letra ${l} (${nb.byL[l].length} ${nb.byL[l].length === 1 ? 'cita' : 'citas'})</option>`).join('')}</select></label>
     <div><button data-acc="area-impresion"${enExcel ? '' : ' disabled'}>Preparar área de impresión</button></div>
     <ol class="contador" style="margin:0;padding-left:18px">
-      <li>Pulsa «Generar cuaderno» después de guardar o quitar citas.</li>
+      <li>La primera vez pulsa «Generar cuaderno»; luego se mantiene al día solo.</li>
       <li>Elige qué imprimir y pulsa «Preparar área de impresión».</li>
       <li>⌘P → Tamaño de papel <b>A5</b>, <b>Doble cara</b>: encuadernación por el <b>borde largo</b>, escala 100 %.</li>
       <li>Cada letra empieza en anverso: puedes imprimir solo una letra sin descuadrar las demás.</li>
@@ -418,12 +444,13 @@ document.addEventListener('click', async e => {
     case 'ver-libro': st.filtros = { ...FILTROS0, book: b.dataset.libro || '' }; st.vista = 'citas'; pintar(); break;
     case 'ver-coleccion': st.filtros = { ...FILTROS0, collection: b.dataset.nombre || '' }; st.vista = 'citas'; pintar(); break;
     case 'generar-cuaderno': {
-      st.progresoCuaderno = 'Preparando…'; pintar();
+      if (cuadernoEnCurso) break;
+      cuadernoEnCurso = true; st.progresoCuaderno = 'Preparando…'; pintar();
       try {
         const r = await ejecutar(ctx => generarCuaderno(ctx, st.modelo, { ahora, medir, alProgresar: (h, t) => { st.progresoCuaderno = `Generando… ${h}/${t} págs.`; pintar(); } }));
         toast(`Cuaderno ${r.anio}: ${r.paginas} páginas (${r.hojas} hojas), ${r.citas} citas.`);
       } catch (err) { toast(err instanceof Error ? err.message : String(err), true); }
-      st.progresoCuaderno = ''; pintar(); break;
+      cuadernoEnCurso = false; st.progresoCuaderno = ''; pintar(); break;
     }
     case 'area-impresion': {
       const letra = /** @type {HTMLSelectElement} */ ($('#letra-impresion')).value || null; st.letraImpresion = letra || '';

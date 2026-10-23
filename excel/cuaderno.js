@@ -2,9 +2,11 @@
 // Genera la hoja «Cuaderno» (A5, doble cara) a partir del plan de core/maquetado.js.
 // - La hoja la crea y la regenera ReadCite: lleva una marca en L1 (columna oculta). Si existe una hoja
 //   «Cuaderno» sin esa marca, no se toca y se avisa.
+// - En L2 guarda la huella del contenido (firmaCuaderno): el panel la compara tras cada cambio y solo regenera
+//   la hoja si las citas guardadas han cambiado (actualización automática).
 // - Columnas y filas en mm (puntos), márgenes de página a 0, A5 vertical, salto de página manual al inicio
 //   de cada página y área de impresión A:J (todo el cuaderno o una sola letra).
-import { estructuraCuaderno, NB_LETTERS } from '../core/cuaderno.js';
+import { estructuraCuaderno, firmaCuaderno, NB_LETTERS } from '../core/cuaderno.js';
 import { planCuaderno, FILAS_PAGINA, COLORES } from '../core/maquetado.js';
 import { ErrorReadCite } from './capa.js';
 import { textoSeguro } from '../core/datos.js';
@@ -23,30 +25,56 @@ export function opcionesCuaderno(config, ahora) {
 
 /** Comprueba la hoja Cuaderno: null si no existe; lanza si existe y no la creó ReadCite. @param {any} ctx */
 async function hojaPropia(ctx) {
+  const r = await leerHoja(ctx);
+  if (r && !r.propia) throw new ErrorReadCite(`Ya existe una hoja «${HOJA}» que no creó ReadCite. Renómbrala o muévela para que pueda generar el cuaderno.`);
+  return r && r.ws;
+}
+/** @param {any} ctx @returns {Promise<null | {ws:any, propia:boolean, firma:string}>} */
+async function leerHoja(ctx) {
   const ws = ctx.workbook.worksheets.getItemOrNullObject(HOJA);
   ws.load('isNullObject');
   await ctx.sync();
   if (ws.isNullObject) return null;
-  const m = ws.getRange('L1').load('values');
+  const m = ws.getRange('L1:L2').load('values');
   await ctx.sync();
-  if (m.values[0][0] !== MARCA) throw new ErrorReadCite(`Ya existe una hoja «${HOJA}» que no creó ReadCite. Renómbrala o muévela para que pueda generar el cuaderno.`);
-  return ws;
+  return { ws, propia: m.values[0][0] === MARCA, firma: String(m.values[1]?.[0] ?? '') };
+}
+
+/**
+ * ¿Hay que regenerar la hoja Cuaderno? Solo si existe, la creó ReadCite y su huella ya no coincide con las citas.
+ * Si no existe (el usuario aún no lo generó) o es una hoja ajena, no se toca.
+ * @param {any} ctx @param {{citas:any[], config:any}} modelo @param {number} ahora
+ */
+export async function cuadernoDesactualizado(ctx, modelo, ahora) {
+  const r = await leerHoja(ctx);
+  if (!r || !r.propia) return false;
+  return r.firma !== firmaCuaderno(estructuraCuaderno(modelo.citas, opcionesCuaderno(modelo.config, ahora)));
 }
 
 /**
  * (Re)genera la hoja Cuaderno.
  * @param {any} ctx  contexto de Excel.run
  * @param {{citas:any[], config:any}} modelo  resultado de leerTodo()
- * @param {{ahora:number, medir:import('../core/maquetado.js').Medidor, alProgresar?:(hecho:number,total:number)=>void}} op
+ * @param {{ahora:number, medir:import('../core/maquetado.js').Medidor, alProgresar?:(hecho:number,total:number)=>void, activar?:boolean}} op
+ *   activar: false en la actualización automática (no cambia la hoja que está mirando el usuario)
  */
-export async function generarCuaderno(ctx, modelo, { ahora, medir, alProgresar }) {
+export async function generarCuaderno(ctx, modelo, { ahora, medir, alProgresar, activar = true }) {
   const opciones = opcionesCuaderno(modelo.config, ahora);
   const nb = estructuraCuaderno(modelo.citas, opciones);
   const plan = planCuaderno(nb, medir);
 
   const vieja = await hojaPropia(ctx);
-  if (vieja) { vieja.delete(); await ctx.sync(); }
+  let posicion = null, estabaActiva = false;
+  if (vieja) {
+    vieja.load('position');
+    const activa = ctx.workbook.worksheets.getActiveWorksheet ? ctx.workbook.worksheets.getActiveWorksheet().load('name') : null;
+    await ctx.sync();
+    posicion = typeof vieja.position === 'number' ? vieja.position : null;
+    estabaActiva = !!activa && activa.name === HOJA;
+    vieja.delete(); await ctx.sync();
+  }
   const ws = ctx.workbook.worksheets.add(HOJA);
+  if (posicion !== null) ws.position = posicion;
   const ultima = plan.filas;
 
   // Rejilla en mm, fuente base y marca
@@ -59,7 +87,7 @@ export async function generarCuaderno(ctx, modelo, { ahora, medir, alProgresar }
   const todo = ws.getRange(`A1:J${ultima}`);
   todo.format.font.name = 'Georgia'; todo.format.font.size = 8; todo.format.font.color = COLORES.tinta;
   todo.format.verticalAlignment = 'Top'; todo.format.horizontalAlignment = 'Left'; // los números (año, páginas) también a la izquierda
-  ws.getRange('L1').values = [[MARCA]];
+  ws.getRange('L1:L2').values = [[MARCA], [firmaCuaderno(nb)]];
   ws.getRange('L:L').columnHidden = true;
   ws.showGridlines = false;
 
@@ -90,7 +118,7 @@ export async function generarCuaderno(ctx, modelo, { ahora, medir, alProgresar }
     ws.horizontalPageBreaks.removePageBreaks();
     for (const f0 of plan.inicios.slice(1)) ws.horizontalPageBreaks.add(`A${f0 + 1}`);
   }
-  ws.activate();
+  if (activar || estabaActiva) ws.activate();
   await ctx.sync();
   return { paginas: plan.paginas, hojas: plan.paginas / 2, citas: nb.total, anio: nb.anio, inicioLetra: plan.inicioLetra };
 }
