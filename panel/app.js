@@ -11,7 +11,7 @@ import { generarInicio, hayInicio } from '../excel/inicio.js';
 import { generarBuscar } from '../excel/buscar.js';
 import { guardarPng, dibujarTarjeta } from './png.js';
 import { limpiarTranscripcion } from '../core/ocr.js';
-import { imagenLegible, esHeic } from './imagen.js';
+import { imagenLegible } from './imagen.js';
 import { FORMATOS } from '../core/tarjeta.js';
 import { estructuraCuaderno, NB_LETTERS } from '../core/cuaderno.js';
 
@@ -249,7 +249,7 @@ async function transcribir(archivo) {
   const marca = (/** @type {string} */ t) => { st.ocrEstado = t; const el = document.getElementById('ocr-estado'); if (el) el.textContent = t; };
   st.ocrNota = ''; marca('Preparando…'); pintar();
   try {
-    if (esHeic(archivo)) marca('Abriendo foto HEIC…');
+    marca('Abriendo foto…');
     const imagen = await imagenLegible(archivo);
     const T = await cargarOcr();
     const r = await T.recognize(imagen, 'spa', { logger: (/** @type {any} */ m) => {

@@ -9,6 +9,14 @@ const LADO_MAX = 3000;
 /** @param {File} f */
 export const esHeic = f => /hei[cf]/i.test(f.type) || /\.(heic|heif)$/i.test(f.name);
 
+/** Mira el contenido, no el nombre: una foto del iPhone puede llegar como «IMG_1234.png» y ser HEIC por dentro.
+ * @param {Blob} f */
+export async function contenidoHeic(f) {
+  const b = new Uint8Array(await f.slice(0, 12).arrayBuffer());
+  const txt = String.fromCharCode(...b.slice(4, 12));
+  return txt.startsWith('ftyp') && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(txt.slice(4));
+}
+
 /** Decodifica con el propio navegador (Safari/Excel para Mac leen HEIC; Chromium/Edge no).
  * @param {Blob} blob @returns {Promise<ImageBitmap | HTMLImageElement | null>} */
 async function decodificar(blob) {
@@ -25,7 +33,7 @@ async function decodificar(blob) {
  */
 export async function imagenLegible(archivo) {
   let img = await decodificar(archivo);
-  if (!img && esHeic(archivo)) {
+  if (!img && (esHeic(archivo) || await contenidoHeic(archivo))) {
     // Excel en Windows/web no abre HEIC: se convierte aquí mismo con heic-to (libheif en WebAssembly, sin eval,
     // incluido en el complemento y cubierto por la firma oficial). Excel para Mac no llega a cargarlo.
     const { heicTo } = await import('./vendor/heic-to/heic-to.js');
