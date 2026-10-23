@@ -9,7 +9,7 @@ CLAVE="${READCITE_CLAVE:-$HOME/.readcite/firma/readcite_firma}"
 
 # Archivos que forman la versión publicada (panel, lógica, capa Excel, manifiesto y licencia)
 find panel core excel -type f ! -name '.DS_Store' | LC_ALL=C sort > firma/.lista
-printf '%s\n' manifest.xml LICENSE.md >> firma/.lista
+printf '%s\n' index.html manifest.xml LICENSE.md >> firma/.lista
 : > firma/SHA256SUMS
 while IFS= read -r f; do shasum -a 256 "$f" >> firma/SHA256SUMS; done < firma/.lista
 rm firma/.lista

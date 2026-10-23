@@ -8,8 +8,25 @@ y repaso **Ícaro**, búsqueda con filtros, transcripción desde una **foto** de
 Funciona en Excel para **Windows, Mac y la web** (Microsoft 365). Tus citas se guardan en tu propio archivo
 `.xlsx`; el complemento no envía tus datos a ningún servidor.
 
-- **Instalar:** [docs/instalar.md](docs/instalar.md) — manifiesto: [manifest.xml](https://raw.githubusercontent.com/dwanten21/readcite-excel/main/manifest.xml)
-- **¿Es oficial mi copia?** [docs/es-oficial.md](docs/es-oficial.md)
+## 👉 Cómo instalarlo
+
+**Paso 1 — Descarga ReadCite (un clic):**
+
+[![Descargar ReadCite](https://img.shields.io/badge/⬇%20%20Descargar%20ReadCite-23964d?style=for-the-badge)](https://github.com/dwanten21/readcite-excel/releases/latest/download/ReadCite.xml)
+
+Se guarda un archivo pequeño, `ReadCite.xml`, en tu carpeta **Descargas**.
+
+**Paso 2 — Ábrelo en Excel:** sigue los pasos para tu Excel (navegador, Windows o Mac) en la página de instalación:
+
+### ➡️ [dwanten21.github.io/readcite-excel](https://dwanten21.github.io/readcite-excel/)
+
+> Excel no permite instalar complementos con un solo clic salvo desde la tienda de Microsoft, por eso hay
+> que cargar el archivo una vez. Después, ReadCite queda en la pestaña **Inicio** de Excel.
+
+## Más información
+
+- Guía detallada de instalación: [docs/instalar.md](docs/instalar.md)
+- **¿Es oficial mi copia?** [docs/es-oficial.md](docs/es-oficial.md) — descarga ReadCite solo desde aquí.
 - **Imprimir el cuaderno A5:** [docs/imprimir-cuaderno.md](docs/imprimir-cuaderno.md)
 - **Licencia:** [CC BY 4.0](LICENSE.md) — puedes copiarlo y modificarlo citando al autor e indicando los cambios.
 

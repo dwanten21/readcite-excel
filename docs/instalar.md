@@ -1,8 +1,12 @@
 # Instalar ReadCite en Excel
 
-Solo necesitas el archivo **`manifest.xml`** de la versión oficial. Descárgalo de
-https://raw.githubusercontent.com/dwanten21/readcite-excel/main/manifest.xml (clic derecho → *Guardar como…*,
-nombre `manifest.xml`). Antes, si quieres, comprueba que es el oficial: [es-oficial.md](es-oficial.md).
+**La forma más fácil:** abre https://dwanten21.github.io/readcite-excel/ , pulsa **Descargar ReadCite** y sigue
+los pasos de tu Excel.
+
+Solo necesitas un archivo, `ReadCite.xml` (es el mismo `manifest.xml` de este repositorio). Descárgalo con un clic:
+[ReadCite.xml](https://github.com/dwanten21/readcite-excel/releases/latest/download/ReadCite.xml).
+Si quieres, comprueba que es el oficial: [es-oficial.md](es-oficial.md).
+Abajo, donde dice `manifest.xml`, usa ese archivo.
 
 ## Excel para la web (cualquier computadora)
 

@@ -14,3 +14,6 @@ screenshots/
 .thumbnail
 .claude/
 node_modules/
+
+# Material promocional (no forma parte del complemento)
+promo/
