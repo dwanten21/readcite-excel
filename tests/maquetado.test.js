@@ -119,5 +119,29 @@ test('plan: una cita larguísima se recorta con «…» sin salirse de su entrad
   invariantes(nb, plan);
   const cita = plan.bloques.find(b => b.v.startsWith('“palabra'));
   assert.ok(cita.v.endsWith('…'));
-  assert.ok(cita.e.size >= 7.5);
+  assert.ok(cita.e.size >= 7);
+});
+
+test('plan: las notas («lo que entendí») van bajo la cita y tienen espacio aunque la cita sea larga', () => {
+  const larga = { ...guardadas()[0], text: 'imprenta '.repeat(120).trim(), understood: 'Los comienzos del comercio de libros se dieron con impresores y libreros. '.repeat(3).trim() };
+  const nb = estructuraCuaderno([larga], { ahora: AHORA, porPagina: 2 });
+  const plan = M.planCuaderno(nb, medir);
+  invariantes(nb, plan);
+  const cita = plan.bloques.find(b => b.v.startsWith('“imprenta'));
+  const etiqueta = plan.bloques.find(b => b.v === 'LO QUE ENTENDÍ' && b.f1 > cita.f1);
+  const notas = plan.bloques.find(b => b.v.startsWith('Los comienzos'));
+  const obra = plan.bloques.find(b => b.v === 'TEMA · CONCEPTO' && b.f1 > cita.f1);
+  assert.ok(cita.f2 < etiqueta.f1 && etiqueta.f2 < notas.f1 && notas.f2 < obra.f1, 'orden: cita → lo que entendí → datos');
+  assert.ok(notas.v.split('\n').length >= 3, `notas con ${notas.v.split('\n').length} líneas`);
+  assert.ok(notas.f2 - notas.f1 + 1 >= 6, 'al menos el 40 % del espacio para las notas');
+});
+
+test('plan: cita y notas cortas no dejan huecos; sin notas quedan renglones para escribir', () => {
+  const corta = { ...guardadas()[0], text: 'Breve.', understood: 'Una idea.' };
+  const sinNotas = { ...guardadas()[1], understood: '' };
+  const nb = estructuraCuaderno([corta, sinNotas], { ahora: AHORA, porPagina: 2 });
+  const plan = M.planCuaderno(nb, medir);
+  invariantes(nb, plan);
+  const cita = plan.bloques.find(b => b.v.startsWith('“Breve'));
+  assert.ok(cita.f2 - cita.f1 + 1 <= 4, 'la cita corta ocupa solo lo que necesita');
 });

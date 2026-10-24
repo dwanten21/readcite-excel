@@ -20,8 +20,8 @@ export const FILAS_PAGINA = 1 + FILAS_CUERPO + FILAS_PIE + 1; // 83 → 199,3 mm
 export const COLORES = { tinta: '#1a1a1a', gris: '#6b6b6b', gris2: '#8a8a8a', rojo: '#e8432f', regla: '#d9d6d0', caja: '#f1eee8',
   tabActivo: '#1a1a1a', tabCon: '#e4e0d9', tabVacio: '#f0eee9', tabTextoVacio: '#a3a3a3', blanco: '#ffffff' };
 export const ALTO_LINEA = 1.35;           // alto de línea de Georgia en Excel para Mac (calibrado a ojo en la Fase 5: 1,2 recortaba)
-export const ALTO_LINEA_CITA = 1.62;      // la cita (cursiva, varias líneas) sale más espaciada: con 1,35 o 1,45 su última línea
-                                          // quedaba medio cortada y no se veía el «…» (medido en Excel para Mac: ≈ 12 pt a 7,5 pt)
+export const ALTO_LINEA_TEXTO = 1.62;     // textos de varias líneas (cita, notas, APA) salen más espaciados: con 1,35 o 1,45 la
+                                          // última línea quedaba medio cortada y no se veía el «…» (medido en Excel para Mac: ≈ 12 pt a 7,5 pt)
 const SEGURIDAD = 0.86;                   // margen para diferencias de medición entre el panel y Excel (0,94 dejaba que Excel
                                           // para Mac volviera a partir líneas largas: palabras sueltas y cita cortada sin «…»)
 
@@ -176,50 +176,90 @@ export function planCuaderno(nb, medir) {
     p.entries.forEach((/** @type {any} */ e, k) => entrada(e, f + 6 + k * (n + hueco), n, util));
   }
 
-  /** Una cita (o plantilla vacía) en `n` filas desde `f`. @param {any} e @param {number} f @param {number} n @param {number} util */
+  /**
+   * Una cita (o plantilla vacía) en `n` filas desde `f`. Orden de lectura: autor → cita → lo que entendí →
+   * datos de la obra → referencia APA. En una cita guardada los datos son una sola banda (tema, año original,
+   * página): obra, año de edición, editorial y traductor ya están en la referencia APA. Las plantillas en blanco
+   * llevan las dos bandas para rellenarlas a mano. Lo fijo (autor 2 + etiqueta de notas 2 + datos + etiqueta APA 2 + APA)
+   * se descuenta y el resto se reparte entre cita y notas según lo que mide cada texto: si no caben enteros,
+   * las notas conservan al menos el 40 % del espacio y ambos textos bajan de tamaño antes de recortarse con «…».
+   * @param {any} e @param {number} f @param {number} n @param {number} util
+   */
   function entrada(e, f, n, util) {
+    const T = ALTO_LINEA_TEXTO;
+    /** Filas que ocupa un texto ya partido (+1 de aire). @param {string[]} l @param {number} tam */
+    const filasDe = (l, tam) => (l.length ? filasPara(l.length, tam, T) + 1 : 0);
+    /** Encaja un texto en `filas`: prueba tamaños de mayor a menor y, si ni así cabe, recorta con «…».
+     * @param {string} texto @param {number} filas @param {number[]} tams @param {boolean} cursiva */
+    const encajar = (texto, filas, tams, cursiva) => {
+      let l = /** @type {string[]} */ ([]), tam = tams[0];
+      for (tam of tams) { l = partirLineas(texto, util, medir, { size: tam, italic: cursiva }); if (filasDe(l, tam) <= filas) return { l, tam }; }
+      return { l: recortar(l, Math.max(1, lineasEn(filas - 1, tam, T)), util, medir, { size: tam, italic: cursiva }), tam };
+    };
+    const TAMS_CITA = [9, 8.5, 8, 7.5, 7], TAMS_NOTAS = [8, 7.5, 7];
+
     // 1) autor + código
     if (e.filled) addL(f, 0, f + 1, 2, e.author, { size: 9.5, bold: true, v: 'bottom' });
     else { addL(f, 0, f + 1, 0, 'Autor', { size: 7, color: COLORES.gris, v: 'bottom' }); addL(f, 1, f + 1, 2, '', { reglaInf: true }); }
     addL(f, 3, f + 1, 3, e.code, { size: 6.5, color: COLORES.gris2, h: 'right', v: 'bottom' });
-    // 2) reparto: datos (2 bandas × 4 filas) + etiqueta APA (2) + etiqueta notas (2) + notas (mín. 2) = 14 + cita + APA.
-    //    Las etiquetas ocupan 2 filas: en una sola (2,3 mm) Excel recorta el texto de 5,5 pt.
+
+    // 2) reparto del espacio
     const fuenteApa = { size: 7 };
     const apaTxt = e.filled ? `${e.apaPre}${e.apaTitle}${e.apaPost}` : '';
-    const sangria = medir('    ', fuenteApa);
-    const apaL = e.filled ? partirLineas(apaTxt, util, medir, fuenteApa, sangria) : [];
-    const filasApa = e.filled ? filasPara(apaL.length, 7) + 1 : 3; // +1: Excel da más interlineado a la letra pequeña
-    let filasCita = n - 2 - 14 - filasApa;
-    /** @type {string[]} */ let citaL = []; let tam = 9;
-    if (e.filled) {
-      for (tam of [9, 8.5, 8, 7.5]) { citaL = partirLineas(e.text, util, medir, { size: tam, italic: true }); if (filasPara(citaL.length, tam, ALTO_LINEA_CITA) <= filasCita) break; }
-      citaL = recortar(citaL, Math.max(1, lineasEn(filasCita, tam, ALTO_LINEA_CITA)), util, medir, { size: tam, italic: true });
-      filasCita = Math.min(filasCita, filasPara(citaL.length, tam, ALTO_LINEA_CITA) + 1);
+    const apaL = e.filled ? partirLineas(apaTxt, util, medir, fuenteApa, medir('    ', fuenteApa)) : [];
+    const filasApa = e.filled ? Math.max(3, filasDe(apaL, 7)) : 3;
+    const filasDatos = e.filled ? 4 : 8;
+    const libre = n - 2 - 2 - filasDatos - 2 - filasApa;  // filas para cita + notas
+    let filasCita, filasNotas;
+    if (!e.filled) { filasCita = Math.ceil(libre * 0.45); filasNotas = libre - filasCita; }
+    else {
+      const quiere = (/** @type {string} */ t, /** @type {number} */ tam, /** @type {boolean} */ c) => filasDe(partirLineas(t, util, medir, { size: tam, italic: c }), tam);
+      const nCita = quiere(e.text, 9, true);
+      const nNotas = e.hasNotes ? quiere(e.notes, 8, false) : 6; // sin notas: 3 renglones para escribir a mano
+      if (nCita + nNotas <= libre) { filasCita = nCita; filasNotas = libre - nCita; }
+      else {
+        const minNotas = Math.min(nNotas, Math.max(4, Math.round(libre * 0.4)));
+        filasCita = Math.max(Math.min(3, libre), Math.min(nCita, libre - minNotas));
+        filasNotas = libre - filasCita;
+      }
     }
+
+    // 3) cita
     let fc = f + 2;
-    if (e.filled) addL(fc, 0, fc + filasCita - 1, 3, celda(citaL), { size: tam, italic: true, wrap: true, v: 'top' });
-    else for (let r = 0; r < filasCita; r += 2) addL(fc + r, 0, Math.min(fc + r + 1, fc + filasCita - 1), 3, '', { reglaInf: true });
+    if (e.filled) {
+      const c = encajar(e.text, filasCita, TAMS_CITA, true);
+      const usadas = Math.min(filasCita, filasDe(c.l, c.tam));
+      addL(fc, 0, fc + usadas - 1, 3, celda(c.l), { size: c.tam, italic: true, wrap: true, v: 'top' });
+      filasNotas += filasCita - usadas; filasCita = usadas;   // lo que no use la cita, para las notas
+    } else for (let r = 0; r < filasCita; r += 2) addL(fc + r, 0, Math.min(fc + r + 1, fc + filasCita - 1), 3, '', { reglaInf: true });
     fc += filasCita;
-    // 3) datos de la obra (dos bandas: etiqueta 2 filas + valor 2 filas)
-    const etq = { size: 5.5, color: COLORES.gris2, v: /** @type {'bottom'} */ ('bottom') }; const val = { size: 7.5, v: /** @type {'top'} */ ('top'), reglaInf: !e.filled };
-    /** @param {[string, any, number, number][]} campos */
-    const banda = campos => { for (const [t, v, a, b] of campos) { addL(fc, a, fc + 1, b, t, etq); addL(fc + 2, a, fc + 3, b, e.filled ? String(v ?? '') : '', val); } fc += 4; };
-    banda([['OBRA', e.book, 0, 0], ['AÑO ED.', e.edYear, 1, 1], ['AÑO ORIG.', e.origYear, 2, 2], ['PÁG.', e.page, 3, 3]]);
-    banda([['EDITORIAL · TRADUCTOR', e.pubTr, 0, 0], ['TEMA · CONCEPTO', e.topic, 1, 3]]);
-    // 4) referencia APA 7 (caja de color)
-    addL(fc, 0, fc + 1, 3, 'REFERENCIA APA 7', { ...etq, fill: COLORES.caja });
-    if (e.filled) addL(fc + 2, 0, fc + 1 + filasApa, 3, celda(apaL, 4), { size: 7, wrap: true, v: 'top', fill: COLORES.caja });
-    else for (let r = 0; r < filasApa; r++) addL(fc + 2 + r, 0, fc + 2 + r, 3, '', { fill: COLORES.caja, reglaInf: true });
-    fc += 2 + filasApa;
-    // 5) notas · lo que entendí (lo que quede)
-    const filasNotas = f + n - fc - 2;
-    addL(fc, 0, fc + 1, 3, 'NOTAS · LO QUE ENTENDÍ', etq);
+
+    // 4) lo que entendí (justo debajo de la cita)
+    const etq = { size: 5.5, color: COLORES.gris2, v: /** @type {'bottom'} */ ('bottom') };
+    addL(fc, 0, fc + 1, 3, 'LO QUE ENTENDÍ', { ...etq, color: COLORES.rojo, bold: true });
+    fc += 2;
     if (filasNotas > 0) {
       if (e.filled && e.hasNotes) {
-        const notasL = recortar(partirLineas(e.notes, util, medir, { size: 7.5 }), lineasEn(filasNotas, 7.5), util, medir, { size: 7.5 });
-        addL(fc + 2, 0, fc + 1 + filasNotas, 3, celda(notasL), { size: 7.5, wrap: true, v: 'top' });
-      } else for (let r = 0; r < filasNotas; r += 2) addL(fc + 2 + r, 0, Math.min(fc + 3 + r, fc + 1 + filasNotas), 3, '', { reglaInf: true });
+        const nt = encajar(e.notes, filasNotas, TAMS_NOTAS, false);
+        addL(fc, 0, fc + filasNotas - 1, 3, celda(nt.l), { size: nt.tam, wrap: true, v: 'top' });
+      } else for (let r = 0; r < filasNotas; r += 2) addL(fc + r, 0, Math.min(fc + r + 1, fc + filasNotas - 1), 3, '', { reglaInf: true });
     }
+    fc += filasNotas;
+
+    // 5) datos de la obra (dos bandas: etiqueta 2 filas + valor 2 filas)
+    const val = { size: 7.5, v: /** @type {'top'} */ ('top'), reglaInf: !e.filled };
+    /** @param {[string, any, number, number][]} campos */
+    const banda = campos => { for (const [t, v, a, b] of campos) { addL(fc, a, fc + 1, b, t, etq); addL(fc + 2, a, fc + 3, b, e.filled ? String(v ?? '') : '', val); } fc += 4; };
+    if (e.filled) banda([['TEMA · CONCEPTO', e.topic || '—', 0, 1], ['AÑO ORIG.', e.origYear, 2, 2], ['PÁG.', e.page, 3, 3]]);
+    else {
+      banda([['OBRA', '', 0, 0], ['AÑO ED.', '', 1, 1], ['AÑO ORIG.', '', 2, 2], ['PÁG.', '', 3, 3]]);
+      banda([['EDITORIAL · TRADUCTOR', '', 0, 0], ['TEMA · CONCEPTO', '', 1, 3]]);
+    }
+
+    // 6) referencia APA 7 (caja de color, al pie de la ficha)
+    addL(fc, 0, fc + 1, 3, 'REFERENCIA APA 7', { ...etq, fill: COLORES.caja });
+    if (e.filled) addL(fc + 2, 0, fc + 1 + filasApa, 3, celda(recortar(apaL, Math.max(1, lineasEn(filasApa - 1, 7, T)), util, medir, fuenteApa), 4), { size: 7, wrap: true, v: 'top', fill: COLORES.caja });
+    else for (let r = 0; r < filasApa; r++) addL(fc + 2 + r, 0, fc + 2 + r, 3, '', { fill: COLORES.caja, reglaInf: true });
   }
 
   return { filas: nb.pages.length * FILAS_PAGINA, columnasPt: ANCHO_COLUMNAS_PT, altosPt, inicios, inicioLetra, bloques: B, paginas: nb.pages.length };
